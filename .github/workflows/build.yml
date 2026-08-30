@@ -1,0 +1,71 @@
+name: Build APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build Debug APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Check project
+        shell: bash
+        run: |
+          echo "Java:"
+          java -version
+
+          echo "Project:"
+          ls -la
+
+          if [ ! -f "./gradlew" ]; then
+            echo "ERROR: gradlew bulunamadı!"
+            exit 1
+          fi
+
+          chmod +x ./gradlew
+
+      - name: Build APK
+        shell: bash
+        run: |
+          chmod +x ./gradlew
+          ./gradlew assembleDebug --no-daemon --stacktrace
+
+      - name: Find APK
+        shell: bash
+        run: |
+          echo "Built APK files:"
+          find . -type f -name "*.apk" -print
+
+          COUNT=$(find . -type f -path "*/build/outputs/apk/debug/*.apk" | wc -l)
+
+          if [ "$COUNT" -eq 0 ]; then
+            echo "ERROR: APK oluşturulmadı!"
+            exit 1
+          fi
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: NoxNo-debug-apk
+          path: |
+            **/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
